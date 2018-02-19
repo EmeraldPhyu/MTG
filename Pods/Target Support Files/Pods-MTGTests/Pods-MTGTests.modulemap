@@ -1,0 +1,6 @@
+framework module Pods_MTGTests {
+  umbrella header "Pods-MTGTests-umbrella.h"
+
+  export *
+  module * { export * }
+}

@@ -1,0 +1,60 @@
+PODS:
+  - AFNetworking (3.2.0):
+    - AFNetworking/NSURLSession (= 3.2.0)
+    - AFNetworking/Reachability (= 3.2.0)
+    - AFNetworking/Security (= 3.2.0)
+    - AFNetworking/Serialization (= 3.2.0)
+    - AFNetworking/UIKit (= 3.2.0)
+  - AFNetworking/NSURLSession (3.2.0):
+    - AFNetworking/Reachability
+    - AFNetworking/Security
+    - AFNetworking/Serialization
+  - AFNetworking/Reachability (3.2.0)
+  - AFNetworking/Security (3.2.0)
+  - AFNetworking/Serialization (3.2.0)
+  - AFNetworking/UIKit (3.2.0):
+    - AFNetworking/NSURLSession
+  - Alamofire (4.6.0)
+  - AlamofireImage (3.3.0):
+    - Alamofire (~> 4.5)
+  - Charts (3.0.5):
+    - Charts/Core (= 3.0.5)
+  - Charts/Core (3.0.5)
+  - FSCalendar (2.7.9)
+  - GoogleMaps (2.6.0):
+    - GoogleMaps/Maps (= 2.6.0)
+  - GoogleMaps/Base (2.6.0)
+  - GoogleMaps/Maps (2.6.0):
+    - GoogleMaps/Base
+  - HMSegmentedControl (1.5.4)
+  - STPopup (1.8.3)
+  - SwiftSpinner (1.5.0)
+  - SwiftyJSON (4.0.0)
+
+DEPENDENCIES:
+  - AFNetworking
+  - Alamofire
+  - AlamofireImage
+  - Charts
+  - FSCalendar
+  - GoogleMaps
+  - HMSegmentedControl
+  - STPopup
+  - SwiftSpinner
+  - SwiftyJSON
+
+SPEC CHECKSUMS:
+  AFNetworking: 8ac6017b94ea105479f7776e5288e48ae9c59bb4
+  Alamofire: f41a599bd63041760b26d393ec1069d9d7b917f4
+  AlamofireImage: 2e784dc5d00f04903a52c1d169181469c805c3df
+  Charts: 45cdc985b764c838b35ee47eb1365d15735f6d1a
+  FSCalendar: a04b09f16f811bc92e82f3cf852a15225233b9d5
+  GoogleMaps: 42f91c68b7fa2f84d5c86597b18ceb99f5414c7f
+  HMSegmentedControl: b25bc4ec44766e073d62c473188fb354ee244b76
+  STPopup: da1167250a01584af7bcccb898653185f223ec46
+  SwiftSpinner: 4c058c7a1d6b444dd2e1d70988ead40783097133
+  SwiftyJSON: 070dabdcb1beb81b247c65ffa3a79dbbfb3b48aa
+
+PODFILE CHECKSUM: 40da7f1c0d4d0906d86605db427084c3798c9fff
+
+COCOAPODS: 1.4.0

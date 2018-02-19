@@ -9,6 +9,8 @@
 import UIKit
 import MapKit
 import CoreLocation
+import Alamofire
+import AlamofireImage
 
 class AddPinViewController: UIViewController, UIGestureRecognizerDelegate {
     
@@ -28,6 +30,8 @@ class AddPinViewController: UIViewController, UIGestureRecognizerDelegate {
     var flowLayout = UICollectionViewFlowLayout()
     var collectionView : UICollectionView?
     
+    var imageURLArray = [String]()
+    var imageArray = [UIImage]()
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -38,7 +42,14 @@ class AddPinViewController: UIViewController, UIGestureRecognizerDelegate {
         
         
         collectionView = UICollectionView(frame: view.bounds, collectionViewLayout: flowLayout)
-        collectionView?.register(<#T##cellClass: AnyClass?##AnyClass?#>, forCellWithReuseIdentifier: <#T##String#>)
+        collectionView?.register(PhotoCollectionViewCell.self, forCellWithReuseIdentifier: "photoCell")
+        collectionView?.delegate = self
+        collectionView?.dataSource = self
+        collectionView?.backgroundColor = #colorLiteral(red: 0.9999960065, green: 1, blue: 1, alpha: 1)
+        bottomView.addSubview(collectionView!)
+        
+        //3D touch
+        registerForPreviewing(with: self, sourceView: collectionView!)
     }
 
     @IBAction func centerMapBtnPressed(_ sender: UIButton) {
@@ -68,6 +79,7 @@ class AddPinViewController: UIViewController, UIGestureRecognizerDelegate {
     }
 
     @objc func animateViewDown(){
+        cancelAllSessions()
         bottomViewHeightConstraint.constant = 0
         UIView.animate(withDuration: 0.3) {
             self.view.layoutIfNeeded()
@@ -80,7 +92,7 @@ class AddPinViewController: UIViewController, UIGestureRecognizerDelegate {
         spinner?.activityIndicatorViewStyle = .whiteLarge
         spinner?.color = #colorLiteral(red: 0.2605174184, green: 0.2605243921, blue: 0.260520637, alpha: 1)
         spinner?.startAnimating()
-        bottomView.addSubview(spinner!)
+        collectionView?.addSubview(spinner!)
     }
     
     func removeSpinner(){
@@ -88,15 +100,16 @@ class AddPinViewController: UIViewController, UIGestureRecognizerDelegate {
             spinner?.removeFromSuperview()
         }
     }
+    
     func addProgressLbl(){
         progressLbl = UILabel()
-        progressLbl?.frame = CGRect(x: (screenSize.width/2)-100 , y: 100, width: 250, height: 40)
-        progressLbl?.font = UIFont(name: "Acenir Next", size: 18)
+        progressLbl?.frame = CGRect(x: (screenSize.width/2)-100 , y: 180, width: 250, height: 40)
+        progressLbl?.font = UIFont(name: "Acenir Next", size: 14)
         progressLbl?.textAlignment = .center
         progressLbl?.textColor = #colorLiteral(red: 0.2549019754, green: 0.2745098174, blue: 0.3019607961, alpha: 1)
-//        progressLbl?.text = "12/40 PHOTOS LOADED.."
-        bottomView.addSubview(progressLbl!)
+        collectionView?.addSubview(progressLbl!)
     }
+    
     func removeProgressLbl(){
         if progressLbl != nil{
             progressLbl?.removeFromSuperview()
@@ -126,10 +139,14 @@ extension AddPinViewController: MKMapViewDelegate{
     }
     
     @objc func dropPin(sender: UITapGestureRecognizer){
-        //remove old pins first
+        //remove old pin -> spinner, lbl, session, images first
         removePin()
         removeSpinner()
         removeProgressLbl()
+        cancelAllSessions()
+        
+        imageArray = []
+        self.collectionView?.reloadData()
         
         //Animate View Up
         animateViewUp()
@@ -147,6 +164,20 @@ extension AddPinViewController: MKMapViewDelegate{
         addSwipe()
         addSpinner()
         addProgressLbl()
+        
+        retrieveURLsforAnnotation(forAnnotation: annotation) { (finished) in
+            if finished {
+                self.retrieveImages(handler: { (fisished) in
+                    if finished{
+                        //hide spinner and lbl
+                        self.removeSpinner()
+                        self.removeProgressLbl()
+                        //***reload collection view
+                        self.collectionView?.reloadData()
+                    }
+                })
+            }
+        }
     }
     
     func removePin(){
@@ -154,6 +185,45 @@ extension AddPinViewController: MKMapViewDelegate{
 //        for annotation in mapView.annotations{
 //            mapView.removeAnnotation(annotation)
 //        }
+    }
+    
+    func retrieveURLsforAnnotation(forAnnotation annotation: DroppablePin, handler: @escaping (_ status: Bool) -> ()){
+        imageURLArray = []
+        
+        Alamofire.request(flickrURL(forApiKey: apiKey, withAnnotation: annotation, andNumberOfPhotos: 20)).responseJSON { (response) in
+            
+            guard let json = response.result.value as? Dictionary<String, AnyObject> else {return}
+            let photosDict = json["photos"] as? Dictionary<String, AnyObject>
+            let photosDictArray = photosDict!["photo"] as? [Dictionary<String, AnyObject>]
+            for photo in photosDictArray! {
+                let postURL = "https://farm\(photo["farm"]!).staticflickr.com/\(photo["server"]!)/\(photo["id"]!)_\(photo["secret"]!)_h_d.jpg"
+                self.imageURLArray.append(postURL)
+            }
+            handler(true)
+        }
+        
+    }
+    
+    func retrieveImages(handler: @escaping(_ status: Bool)->()){
+        imageArray = []
+        for url in imageURLArray{
+            Alamofire.request(url).responseImage(completionHandler: { (response) in
+                guard let image = response.result.value else{return}
+                self.imageArray.append(image)
+                self.progressLbl?.text = "\(self.imageArray.count)/20 IMAGES LOADED"
+                
+                if self.imageArray.count == self.imageURLArray.count{
+                    handler(true)
+                }
+            })
+        }
+    }
+    
+    func cancelAllSessions(){
+        Alamofire.SessionManager.default.session.getTasksWithCompletionHandler { (sessionDataTask, uploadData, downloadData) in
+            sessionDataTask.forEach({$0.cancel()})
+            downloadData.forEach({$0.cancel()})
+        }
     }
 }
 
@@ -169,4 +239,55 @@ extension AddPinViewController: CLLocationManagerDelegate{
     func locationManager(_ manager: CLLocationManager, didChangeAuthorization: CLAuthorizationStatus){
         centerMapOnUserLocation()
     }
+}
+
+extension AddPinViewController:UICollectionViewDelegate, UICollectionViewDataSource{
+    
+    func numberOfSections(in collectionView: UICollectionView) -> Int {
+        return 1
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        return self.imageArray.count
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        guard let cell  = collectionView.dequeueReusableCell(withReuseIdentifier: "photoCell", for: indexPath) as? PhotoCollectionViewCell else {return UICollectionViewCell()}
+        let imageFromIndex = imageArray[indexPath.row]
+        let imageView = UIImageView(image: imageFromIndex)
+
+        imageView.contentMode = .scaleAspectFit
+        
+        cell.addSubview(imageView)
+        return cell
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        guard let popVC = storyboard?.instantiateViewController(withIdentifier: "PopVC") as? PopViewController else {return}
+        popVC.initData(forImage: imageArray[indexPath.row])
+        present(popVC, animated: true, completion: nil)
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAtIndexPath indexPath: NSIndexPath) -> CGSize {
+        return CGSize(width: 300, height: 300)
+    }
+}
+
+extension AddPinViewController: UIViewControllerPreviewingDelegate{
+    
+    func previewingContext(_ previewingContext: UIViewControllerPreviewing, viewControllerForLocation location: CGPoint) -> UIViewController? {
+        guard let indexPath = collectionView?.indexPathForItem(at: location), let cell = collectionView?.cellForItem(at: indexPath) else {return nil}
+
+        guard let popVC = storyboard?.instantiateViewController(withIdentifier: "PopVC") as? PopViewController else{return nil}
+        
+        popVC.initData(forImage: imageArray[indexPath.row])
+        previewingContext.sourceRect = cell.contentView.frame
+        return popVC
+    }
+    
+    func previewingContext(_ previewingContext: UIViewControllerPreviewing, commit viewControllerToCommit: UIViewController) {
+        show(viewControllerToCommit, sender: self)
+    }
+    
+    
 }
